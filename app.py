@@ -1,43 +1,69 @@
 import streamlit as st
 import pandas as pd
 import numpy as np
-import cv2
 from PIL import Image
 
-# Load color dataset
+# Load color dataset with debug info
 @st.cache_data
 def load_colors():
     df = pd.read_csv("colors.csv")
+    # Strip whitespace from columns for safety
+    df.columns = df.columns.str.strip()
     return df
 
-# Get closest color name
-def get_closest_color_name(R, G, B, df):
+def get_compatible_columns(df):
+    # Lowercase column names for flexible matching
+    lower_cols = [col.lower() for col in df.columns]
+
+    # Possible expected names for R,G,B and color name columns
+    r_col = next((col for col in df.columns if col.lower() == 'r'), None)
+    g_col = next((col for col in df.columns if col.lower() == 'g'), None)
+    b_col = next((col for col in df.columns if col.lower() == 'b'), None)
+    color_col = next((col for col in df.columns if 'color' in col.lower() and 'name' in col.lower()), None)
+
+    missing = []
+    if r_col is None: missing.append("R")
+    if g_col is None: missing.append("G")
+    if b_col is None: missing.append("B")
+    if color_col is None: missing.append("color_name")
+
+    if missing:
+        st.error(f"Missing columns in colors.csv: {', '.join(missing)}")
+        return None, None, None, None
+
+    return r_col, g_col, b_col, color_col
+
+def get_closest_color_name(R, G, B, df, r_col, g_col, b_col, color_col):
     min_dist = float('inf')
     closest_color = ""
     for i in range(len(df)):
-        d = abs(R - int(df.loc[i, "R"])) + abs(G - int(df.loc[i, "G"])) + abs(B - int(df.loc[i, "B"]))
+        d = abs(R - int(df.loc[i, r_col])) + abs(G - int(df.loc[i, g_col])) + abs(B - int(df.loc[i, b_col]))
         if d < min_dist:
             min_dist = d
-            closest_color = df.loc[i, "color_name"]
+            closest_color = df.loc[i, color_col]
     return closest_color
 
-# Streamlit App
-st.title("🎨 Color Detection from Image")
-st.write("Upload an image and click on it to detect the color name and RGB values.")
+def main():
+    st.title("🎨 Color Detection from Image")
+    st.write("Upload an image and enter pixel coordinates to detect the color name and RGB values.")
 
-uploaded_file = st.file_uploader("Upload Image", type=["jpg", "jpeg", "png"])
+    uploaded_file = st.file_uploader("Upload Image", type=["jpg", "jpeg", "png"])
+    if not uploaded_file:
+        st.info("Please upload an image to start.")
+        return
 
-if uploaded_file:
-    image = Image.open(uploaded_file)
+    image = Image.open(uploaded_file).convert('RGB')
     image_np = np.array(image)
     st.image(image, caption="Uploaded Image", use_column_width=True)
 
     df = load_colors()
+    st.write("Color dataset columns detected:", df.columns.tolist())
 
-    st.write("Click anywhere on the image to detect color.")
-    st.write("Note: Use the coordinates below to test manually if Streamlit doesn't support clicks.")
+    r_col, g_col, b_col, color_col = get_compatible_columns(df)
+    if None in [r_col, g_col, b_col, color_col]:
+        st.stop()
 
-    # Select pixel coordinates (for now, using manual input)
+    st.write("Enter pixel coordinates to detect color:")
     col1, col2 = st.columns(2)
     with col1:
         x = st.number_input("X Coordinate", min_value=0, max_value=image_np.shape[1]-1, step=1)
@@ -46,8 +72,8 @@ if uploaded_file:
 
     if st.button("Detect Color"):
         pixel = image_np[int(y), int(x)]
-        R, G, B = int(pixel[0]), int(pixel[1]), int(pixel[2]) if len(pixel) == 3 else (int(pixel[0]), int(pixel[1]), int(pixel[2]))
-        color_name = get_closest_color_name(R, G, B, df)
+        R, G, B = int(pixel[0]), int(pixel[1]), int(pixel[2])
+        color_name = get_closest_color_name(R, G, B, df, r_col, g_col, b_col, color_col)
 
         st.markdown(f"**Color Name:** {color_name}")
         st.markdown(f"**RGB:** ({R}, {G}, {B})")
@@ -57,3 +83,6 @@ if uploaded_file:
             f"<div style='width:100px;height:100px;background-color:rgb({R},{G},{B});border-radius:10px'></div>",
             unsafe_allow_html=True,
         )
+
+if __name__ == "__main__":
+    main()
