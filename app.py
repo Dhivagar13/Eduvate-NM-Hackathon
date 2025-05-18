@@ -8,9 +8,8 @@ from PIL import Image
 def load_colors():
     df = pd.read_csv("colors.csv")
     df.columns = df.columns.str.strip()  # Remove leading/trailing spaces in column names
-    st.write("Loaded DataFrame:", df.head())  # Print the first few rows of the DataFrame
-    return df
-   
+    st.write("Loaded DataFrame columns:", df.columns.tolist())  # Print the column names for debugging
+    return df   
 
 def get_compatible_columns(df):
     # Lowercase column names for flexible matching
