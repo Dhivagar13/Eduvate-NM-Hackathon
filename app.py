@@ -7,9 +7,10 @@ from PIL import Image
 @st.cache_data
 def load_colors():
     df = pd.read_csv("colors.csv")
-    df.columns = df.columns.str.strip()  # Remove leading/trailing spaces in column names
+    # Strip whitespace from columns for safety
+    df.columns = df.columns.str.strip()
     st.write("Loaded DataFrame columns:", df.columns.tolist())  # Print the column names for debugging
-    return df   
+    return df
 
 def get_compatible_columns(df):
     # Lowercase column names for flexible matching
@@ -54,11 +55,9 @@ def main():
 
     image = Image.open(uploaded_file).convert('RGB')
     image_np = np.array(image)
-    st.image(image, caption="Uploaded Image", use_column_width=True)
+    st.image(image, caption="Uploaded Image", use_container_width=True)
 
     df = load_colors()
-    st.write("Color dataset columns detected:", df.columns.tolist())
-
     r_col, g_col, b_col, color_col = get_compatible_columns(df)
     if None in [r_col, g_col, b_col, color_col]:
         st.stop()
