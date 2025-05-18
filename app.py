@@ -7,9 +7,10 @@ from PIL import Image
 @st.cache_data
 def load_colors():
     df = pd.read_csv("colors.csv")
-    # Strip whitespace from columns for safety
-    df.columns = df.columns.str.strip()
+    df.columns = df.columns.str.strip()  # Remove leading/trailing spaces in column names
+    st.write("Loaded DataFrame:", df.head())  # Print the first few rows of the DataFrame
     return df
+   
 
 def get_compatible_columns(df):
     # Lowercase column names for flexible matching
